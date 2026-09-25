@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>RunTrack - App de Corrida</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--text:#17202a;--muted:#6b7280;--primary:#16a34a;--danger:#dc2626;--border:#e5e7eb}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+.app{max-width:480px;margin:auto;min-height:100vh;padding-bottom:80px}
+header{background:#111827;color:white;padding:24px 20px 18px;border-radius:0 0 24px 24px}
+header h1{margin:0;font-size:28px} header p{margin:6px 0 0;color:#cbd5e1}
+main{padding:18px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 5px 18px #0000000b}
+.hero{text-align:center;padding:24px 18px}
+.timer{font-size:48px;font-weight:700;letter-spacing:2px;margin:12px 0}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:#f8fafc;border-radius:14px;padding:14px}.stat b{display:block;font-size:23px;margin-top:5px}.stat span{font-size:12px;color:var(--muted)}
+button{border:0;border-radius:14px;padding:14px 16px;font-size:16px;font-weight:700;cursor:pointer}
+.primary{background:var(--primary);color:white;width:100%}
+.secondary{background:#e5e7eb;color:#111827}.danger{background:var(--danger);color:white}
+.controls{display:flex;gap:8px}.controls button{flex:1}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(480px,100%);background:#fff;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:10px 6px calc(10px + env(safe-area-inset-bottom));z-index:5}
+nav button{background:transparent;color:#6b7280;padding:7px 5px;font-size:12px}nav button.active{color:var(--primary)}
+.screen{display:none}.screen.active{display:block}
+.map{height:210px;border-radius:16px;background:linear-gradient(135deg,#dbeafe,#dcfce7);display:flex;align-items:center;justify-content:center;color:#475569;position:relative;overflow:hidden}
+.map:before{content:"";position:absolute;width:160%;height:3px;background:#16a34a;transform:rotate(-25deg);box-shadow:0 45px #16a34a,-50px -50px #16a34a}
+.map span{position:relative;background:white;padding:10px 14px;border-radius:12px;font-weight:bold}
+.item{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--border)}.item:last-child{border:0}
+label{display:block;margin:10px 0 6px;font-weight:bold}input{width:100%;padding:13px;border:1px solid var(--border);border-radius:12px;font-size:16px}
+.toggle{display:flex;gap:8px;margin-top:10px}
+.small{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+<header><h1>🏃 RunTrack</h1><p>Seu treino, seu ritmo.</p></header>
+
+<main>
+<section id="home" class="screen active">
+<div class="card hero">
+<h2>Pronto para correr?</h2>
+<p class="small">Inicie uma nova corrida e acompanhe seu desempenho.</p>
+<button class="primary" onclick="startRun()">▶ Iniciar corrida</button>
+</div>
+<div class="card">
+<h3>Resumo</h3>
+<div class="stats">
+<div class="stat"><span>Distância total</span><b id="totalDist">0,00 km</b></div>
+<div class="stat"><span>Corridas</span><b id="totalRuns">0</b></div>
+<div class="stat"><span>Tempo total</span><b id="totalTime">00:00:00</b></div>
+<div class="stat"><span>Calorias</span><b id="totalCal">0 kcal</b></div>
+</div>
+</div>
+</section>
+
+<section id="run" class="screen">
+<div class="card hero">
+<div class="small">TEMPO</div><div class="timer" id="timer">00:00:00</div>
+<div class="stats">
+<div class="stat"><span>Distância</span><b id="runDist">0,00</b><span>km</span></div>
+<div class="stat"><span>Ritmo médio</span><b id="pace">--:--</b><span>min/km</span></div>
+</div>
+</div>
+<div class="card"><div class="map"><span>📍 Percurso da corrida</span></div><p class="small" id="gpsStatus">GPS: aguardando localização...</p>
+<p class="small" id="gpsHelp"></p>
+<button class="secondary" style="width:100%;margin-top:8px" onclick="simulateDistance()">🧪 Simular 1 km (teste)</button></div>
+<div class="card controls">
+<button class="secondary" id="pauseBtn" onclick="togglePause()">⏸ Pausar</button>
+<button class="danger" onclick="finishRun()">⏹ Finalizar</button>
+</div>
+</section>
+
+<section id="history" class="screen">
+<div class="card"><h2>Histórico</h2><div id="historyList"><p class="small">Nenhuma corrida registrada.</p></div></div>
+</section>
+
+<section id="stats" class="screen">
+<div class="card"><h2>📊 Estatísticas</h2><div class="stats">
+<div class="stat"><span>Distância total</span><b id="sDist">0,00 km</b></div>
+<div class="stat"><span>Quantidade de corridas</span><b id="sRuns">0</b></div>
+<div class="stat"><span>Tempo total</span><b id="sTime">00:00:00</b></div>
+<div class="stat"><span>Calorias</span><b id="sCal">0 kcal</b></div>
+</div></div>
+<div class="card"><h3>🏆 Recordes pessoais</h3><div class="item"><span>Maior distância</span><b id="recordDist">0,00 km</b></div><div class="item"><span>Melhor ritmo</span><b id="recordPace">--:--</b></div><div class="item"><span>Maior duração</span><b id="recordTime">00:00:00</b></div></div>
+</section>
+
+<section id="profile" class="screen">
+<div class="card"><h2>👤 Perfil</h2>
+<label>Nome</label><input id="name" placeholder="Seu nome">
+<label>Idade</label><input id="age" type="number" placeholder="Idade">
+<label>Peso (kg)</label><input id="weight" type="number" placeholder="Peso">
+<label>Altura (cm)</label><input id="height" type="number" placeholder="Altura">
+<br><button class="primary" onclick="saveProfile()">Salvar perfil</button>
+</div>
+<div class="card"><h3>🌙 Aparência</h3><div class="toggle"><button class="secondary" onclick="setTheme('light')">☀️ Claro</button><button class="secondary" onclick="setTheme('dark')">🌙 Escuro</button></div></div>
+</section>
+</main>
+
+<nav>
+<button class="active" onclick="show('home',this)">🏠<br>Início</button>
+<button onclick="show('run',this)">🏃<br>Correr</button>
+<button onclick="show('history',this)">📋<br>Histórico</button>
+<button onclick="show('stats',this)">📊<br>Stats</button>
+<button onclick="show('profile',this)">👤<br>Perfil</button>
+</nav>
+</div>
+
+<script>
+let runs=JSON.parse(localStorage.getItem('runs')||'[]');
+let running=false, paused=false, startTime=0, elapsed=0, timerId=null, distance=0, watchId=null;
+
+function fmtTime(sec){sec=Math.floor(sec);let h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return [h,m,s].map((v,i)=>String(v).padStart(2,'0')).join(':')}
+function fmtPace(sec,km){if(!km)return '--:--';let p=sec/km,m=Math.floor(p/60),s=Math.round(p%60);if(s===60){m++;s=0}return `${m}:${String(s).padStart(2,'0')}`}
+function show(id,btn){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');update()}
+function startRun(){
+  show('run',document.querySelectorAll('nav button')[1]);
+  running=true;
+  paused=false;
+  distance=0;
+  elapsed=0;
+  startTime=Date.now();
+  clearInterval(timerId);
+  timerId=setInterval(tick,1000);
+  document.getElementById('runDist').textContent='0,00';
+  document.getElementById('pace').textContent='--:--';
+  document.getElementById('gpsStatus').textContent='GPS: solicitando localização...';
+  document.getElementById('gpsHelp').textContent='Aguarde e permita a localização do navegador.';
+  document.getElementById('pauseBtn').textContent='⏸ Pausar';
+  startGPS();
+}
+function tick(){if(!paused){elapsed=Math.floor((Date.now()-startTime)/1000);document.getElementById('timer').textContent=fmtTime(elapsed);document.getElementById('runDist').textContent=distance.toFixed(2).replace('.',',');document.getElementById('pace').textContent=fmtPace(elapsed,distance)}}
+function togglePause(){if(!running)return;if(!paused){paused=true;document.getElementById('pauseBtn').textContent='▶ Continuar'}else{paused=false;startTime=Date.now()-elapsed*1000;document.getElementById('pauseBtn').textContent='⏸ Pausar'}}
+function finishRun(){if(!running)return;running=false;clearInterval(timerId);if(watchId!==null&&navigator.geolocation)navigator.geolocation.clearWatch(watchId);let weight=Number(localStorage.getItem('weight')||70);let calories=Math.round(distance*weight*1.036);let run={date:new Date().toLocaleString('pt-BR'),time:elapsed,distance,pace:fmtPace(elapsed,distance),calories};runs.unshift(run);localStorage.setItem('runs',JSON.stringify(runs));alert('Corrida salva com sucesso!');show('history',document.querySelectorAll('nav button')[2])}
+function startGPS(){
+  const status=document.getElementById('gpsStatus');
+  const help=document.getElementById('gpsHelp');
+
+  if(!navigator.geolocation){
+    status.textContent='GPS: não disponível neste navegador.';
+    help.textContent='Abra o aplicativo pelo Chrome ou Safari e ative a localização.';
+    return;
+  }
+
+  status.textContent='GPS: procurando localização...';
+  help.textContent='Permita o acesso à localização quando aparecer a solicitação.';
+
+  let last=null;
+  let lastTime=null;
+
+  watchId=navigator.geolocation.watchPosition(
+    pos=>{
+      const accuracy=pos.coords.accuracy || 9999;
+
+      status.textContent=`GPS: ativo ✓ • precisão ~${Math.round(accuracy)} m`;
+
+      if(accuracy>100){
+        help.textContent='Sinal GPS impreciso. Aguarde alguns segundos ou vá para um local aberto.';
+        return;
+      }
+
+      help.textContent='GPS funcionando. A distância será atualizada conforme você se movimentar.';
+
+      const cur={
+        lat:pos.coords.latitude,
+        lon:pos.coords.longitude,
+        time:pos.timestamp
+      };
+
+      if(last && !paused && running){
+        const R=6371;
+        const dLat=(cur.lat-last.lat)*Math.PI/180;
+        const dLon=(cur.lon-last.lon)*Math.PI/180;
+
+        const a=Math.sin(dLat/2)**2+
+          Math.cos(last.lat*Math.PI/180)*
+          Math.cos(cur.lat*Math.PI/180)*
+          Math.sin(dLon/2)**2;
+
+        const segment=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+        const seconds=Math.max(1,(cur.time-lastTime)/1000);
+        const speed=segment/seconds*3600;
+
+        // Evita que um erro do GPS faça a distância "pular".
+        if(segment>=0.003 && segment<0.15 && speed<25){
+          distance+=segment;
+        }
+      }
+
+      last=cur;
+      lastTime=cur.time;
+      tick();
+    },
+    err=>{
+      if(err.code===1){
+        status.textContent='GPS: permissão negada ❌';
+        help.textContent='No celular, permita Localização para o navegador nas configurações.';
+      }else if(err.code===2){
+        status.textContent='GPS: localização indisponível ❌';
+        help.textContent='Ative a Localização do celular e tente novamente em um local aberto.';
+      }else{
+        status.textContent='GPS: tempo esgotado ❌';
+        help.textContent='Tente novamente e aguarde alguns segundos para o GPS encontrar sua posição.';
+      }
+    },
+    {
+      enableHighAccuracy:true,
+      maximumAge:1000,
+      timeout:20000
+    }
+  );
+}
+
+function simulateDistance(){
+  if(!running){
+    alert('Primeiro toque em "Iniciar corrida".');
+    return;
+  }
+  distance+=1;
+  document.getElementById('gpsStatus').textContent='Modo de teste: +1,00 km ✓';
+  document.getElementById('gpsHelp').textContent='Teste concluído. Em uma corrida real, a distância vem do GPS.';
+  tick();
+}
+function update(){let td=runs.reduce((a,r)=>a+r.distance,0),tt=runs.reduce((a,r)=>a+r.time,0),tc=runs.reduce((a,r)=>a+r.calories,0);document.getElementById('totalDist').textContent=td.toFixed(2).replace('.',',')+' km';document.getElementById('totalRuns').textContent=runs.length;document.getElementById('totalTime').textContent=fmtTime(tt);document.getElementById('totalCal').textContent=tc+' kcal';document.getElementById('sDist').textContent=td.toFixed(2).replace('.',',')+' km';document.getElementById('sRuns').textContent=runs.length;document.getElementById('sTime').textContent=fmtTime(tt);document.getElementById('sCal').textContent=tc+' kcal';document.getElementById('recordDist').textContent=(Math.max(0,...runs.map(r=>r.distance))).toFixed(2).replace('.',',')+' km';document.getElementById('recordTime').textContent=fmtTime(Math.max(0,...runs.map(r=>r.time)));let p=runs.filter(r=>r.distance>0).map(r=>r.time/r.distance);document.getElementById('recordPace').textContent=p.length?fmtPace(Math.min(...p),1):'--:--';document.getElementById('historyList').innerHTML=runs.length?runs.map(r=>`<div class="item"><span>${r.date}<br><small>${r.distance.toFixed(2)} km · ${r.pace} min/km · ${r.calories} kcal</small></span><b>${fmtTime(r.time)}</b></div>`).join(''):'<p class="small">Nenhuma corrida registrada.</p>'}
+function saveProfile(){localStorage.setItem('weight',document.getElementById('weight').value||70);localStorage.setItem('profile',JSON.stringify({name:name.value,age:age.value,height:height.value,weight:weight.value}));alert('Perfil salvo!')}
+function setTheme(t){if(t==='dark'){document.documentElement.style.setProperty('--bg','#0f172a');document.documentElement.style.setProperty('--card','#1e293b');document.documentElement.style.setProperty('--text','#f8fafc');document.documentElement.style.setProperty('--muted','#cbd5e1');document.documentElement.style.setProperty('--border','#334155')}else location.reload()}
+update();
+</script>
+</body>
+</html>
